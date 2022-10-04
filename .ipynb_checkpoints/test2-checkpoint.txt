@@ -1,8 +1,0 @@
-System with 4 or 2 number of Weyl points in the configuration space 
-n: 3
-x	z
-
-4 Weyl points: 
-
-2 Weyl points: 
-Add(Mul(Integer(-1), Float('0.38320796158736381', precision=53), sin(Symbol('beta_2', Real=True))), Mul(Integer(-1), Float('0.35133397707500347', precision=53), sin(Mul(Integer(2), Symbol('beta_2', Real=True)))), Mul(Integer(-1), Float('0.45276501574655403', precision=53), sin(Mul(Integer(3), Symbol('beta_2', Real=True)))))	Add(Mul(Integer(-1), Float('0.29835141147502586', precision=53), sin(Symbol('beta_1', Real=True))), Mul(Float('0.065598940872650835', precision=53), sin(Mul(Integer(2), Symbol('beta_1', Real=True)))), Mul(Integer(-1), Float('0.15391655636019996', precision=53), sin(Mul(Integer(3), Symbol('beta_1', Real=True)))), Mul(Integer(-1), Float('0.22552351475309818', precision=53), cos(Symbol('beta_1', Real=True))), Mul(Float('0.00064750342028252472', precision=53), cos(Mul(Integer(2), Symbol('beta_1', Real=True)))), Mul(Integer(-1), Float('0.13046175479414601', precision=53), cos(Mul(Integer(3), Symbol('beta_1', Real=True)))), Mul(Integer(-1), Float('0.49921454058706505', precision=53), cos(Symbol('beta_2', Real=True))), Mul(Integer(-1), Float('0.16653950810908036', precision=53), cos(Mul(Integer(2), Symbol('beta_2', Real=True)))), Mul(Integer(-1), Float('0.10455634641060385', precision=53), cos(Mul(Integer(3), Symbol('beta_2', Real=True)))))
