@@ -1,9 +1,22 @@
 import numpy as np
 import sympy as sp
 import matplotlib.pyplot as plt
-import timeit
 
 def symbolic_matrices(n, core = True):
+    """
+    Create the random matrix which is characterised by the Pauli X and Z components 
+
+    Parameters
+    ----------
+    n : integer, the number of higher harmonics included in the random matrix
+    
+    core : boolean, if True then only the essential objects are returned The default is True.
+
+    Returns
+    -------
+    TYPE based on 'core' the function returns a number of functions (and sympy expressions)
+
+    """
 
     #define the angle parameters
     beta1 = sp.Symbol('beta_1', Real = True)
@@ -31,7 +44,7 @@ def symbolic_matrices(n, core = True):
     d2_x = sp.diff(x, beta2)
     d2_z = sp.diff(z, beta2)
     
-    #make lamba functions out of these 
+    #make lamba functions out of these which we return and work with later on
     xf = sp.utilities.lambdify(['beta_1', 'beta_2'], x)
     zf = sp.utilities.lambdify(['beta_1', 'beta_2'], z)
     d1_xf = sp.utilities.lambdify(['beta_1', 'beta_2'], d1_x)
@@ -39,16 +52,38 @@ def symbolic_matrices(n, core = True):
     d2_xf = sp.utilities.lambdify(['beta_1', 'beta_2'], d2_x)
     d2_zf = sp.utilities.lambdify(['beta_1', 'beta_2'], d2_z)
 
+    #return a bunch of objects depending on the value of core
     if core:
         #and return the lambdifyied expressions and also the symbols
         return xf, zf, d1_xf, d1_zf, d2_xf, d2_zf
     
     else:
+        #if core is False then also return the sympy expressions x and z
         return x, z, xf, zf, d1_xf, d1_zf, d2_xf, d2_zf
 
 def get_spectrum_grid(betas, xf, zf, plot = False, save_plot = None):
+    """
+    Create a discrete grid on which the splitting is evaluated. 
+
+    Parameters
+    ----------
+    betas : numpy array, the finite grid along the angle axis. This array is used to create the full 2D grid.
     
-    #create a container for the difference between the eigenvalues
+    xf : lambda function, if evaluated at a certain (beta1, beta2) point, gives the Pauli X component of the random matrix.
+    
+    zf : lambda function, if evaluated at a certain (beta1, beta2) point, gives the Pauli Z component of the random matrix.
+
+    plot : boolean, if True then a plot is created from the splitting values. The default is False.
+    
+    save_plot : string, if not None, then the plot gets saved. The default is None.
+
+    Returns
+    -------
+    diffs : 2D numpy array, contains the splitting values.
+
+    """
+    
+    #create a container for the splitting
     diffs = np.zeros( len(betas) * len(betas) ).reshape((len(betas), len(betas)))
     
     #now iterate through the grid and calculate the spectrum
@@ -59,7 +94,7 @@ def get_spectrum_grid(betas, xf, zf, plot = False, save_plot = None):
             evaled_x = xf(beta1val, beta2val)
             evaled_z = zf(beta1val, beta2val)
             
-            #calculate the difference between the eigenvalues in the parameter space
+            #calculate the splitting
             diff = 2 * np.sqrt(evaled_x**2 + evaled_z**2)
     
             #add the value to the container
@@ -67,16 +102,29 @@ def get_spectrum_grid(betas, xf, zf, plot = False, save_plot = None):
         
     #plot the grid if the plot is True
     if plot == True:
+        #create figure
         fig = plt.figure( figsize = (6,6))
+        
+        #plot the values (note the ::-1 !)
         im = plt.imshow(diffs[::-1, :], extent = [betas[0], betas[-1], betas[0], betas[-1]])
+        
+        #add labels 
         plt.xlabel(r"$\beta_1$", fontsize = 14)
         plt.ylabel(r"$\beta_2$", fontsize = 14)
+        
+        #add title
         plt.title(r"$2 \sqrt{x\left( \beta_1, \beta_2 \right)^2+z\left( \beta_1, \beta_2 \right)^2}$", fontsize = 12)
+        
+        #rescale the colorbar
         plt.colorbar(im,fraction=0.046, pad=0.04)
+        
+        #save plot if needed
         if save_plot != None:
             plt.savefig(save_plot, dpi = 500, bbox_inches='tight')
         else: 
             pass
+        
+        #show the figure anyways
         plt.show()
     else:
         pass
@@ -85,20 +133,70 @@ def get_spectrum_grid(betas, xf, zf, plot = False, save_plot = None):
     return diffs
 
 def gtensor(d1_xf, d1_zf, d2_xf, d2_zf, b1_val, b2_val):
+    """
+    Calculate the g-tensor of the random matrix
 
+    Parameters
+    ----------
+    d1_xf : lambda function, the derivative of the Pauli X component of the random matrix w.r.t. beta1.
+    
+    d1_zf : lambda function, the derivative of the Pauli Z component of the random matrix w.r.t. beta1.
+    
+    d2_xf : lambda function, the derivative of the Pauli X component of the random matrix w.r.t. beta2.
+    
+    d2_zf : lambda function, the derivative of the Pauli Z component of the random matrix w.r.t. beta2.
+    
+    b1_val : float, the beta1 point at which the g-tensor is to be obtained.
+    
+    b2_val : float, the beta2 point at which the g-tensor is to be obtained.
+
+    Returns
+    -------
+    g_mat : 2D numpy array, the g-tensor corresponding to the point in the configuration space
+
+    """
+
+    #evaluate the components of the g-tensor
     g1_x = d1_xf(b1_val, b2_val)
     g1_z = d1_zf(b1_val, b2_val)
     g2_x = d2_xf(b1_val, b2_val)
     g2_z = d2_zf(b1_val, b2_val)
     
+    #construct the g-tensor
     g_mat = np.array([[g1_x, g2_x],
                       [g1_z, g2_z]], dtype = "float64")
     
     return g_mat
 
 def itfunc(xf, zf, d1_xf, d1_zf, d2_xf, d2_zf, b1_val, b2_val):
+    """
+    Iteration function which is used during the Weyl-point search.
+
+    Parameters
+    ----------
+    xf : lambda function, if evaluated at a certain (beta1, beta2) point, gives the Pauli X component of the random matrix.
     
-    #evaluate everything at this specific beta1 beta2 point characterised by b1_val and b2_val
+    zf : lambda function, if evaluated at a certain (beta1, beta2) point, gives the Pauli Z component of the random matrix.
+    
+    d1_xf : lambda function, the derivative of the Pauli X component of the random matrix w.r.t. beta1.
+    
+    d1_zf : lambda function, the derivative of the Pauli Z component of the random matrix w.r.t. beta1.
+    
+    d2_xf : lambda function, the derivative of the Pauli X component of the random matrix w.r.t. beta2.
+    
+    d2_zf : lambda function, the derivative of the Pauli Z component of the random matrix w.r.t. beta2.
+    
+    b1_val : float, the beta1 point at which the g-tensor is to be obtained.
+    
+    b2_val : float, the beta2 point at which the g-tensor is to be obtained.
+
+    Returns
+    -------
+    delta_betas : numpy array, the change in the beta values to get closer to the zero splitting
+
+    """
+    
+    #evaluate everything at this specific point characterised by b1_val and b2_val
     dx = xf(b1_val, b2_val)
     dz = zf(b1_val, b2_val)
     
@@ -115,8 +213,38 @@ def itfunc(xf, zf, d1_xf, d1_zf, d2_xf, d2_zf, b1_val, b2_val):
     return delta_betas
 
 def weyl_search(xf, zf, d1_xf, d1_zf, d2_xf, d2_zf, beta0, max_it = 30, prec_it = 1e-12):
+    """
+    Function that carries out the Weyl-point search starting from a random point specified by beta0
+
+    Parameters
+    ----------
+    xf : lambda function, if evaluated at a certain (beta1, beta2) point, gives the Pauli X component of the random matrix.
     
-    #set the iteration number to one
+    zf : lambda function, if evaluated at a certain (beta1, beta2) point, gives the Pauli Z component of the random matrix.
+    
+    d1_xf : lambda function, the derivative of the Pauli X component of the random matrix w.r.t. beta1.
+    
+    d1_zf : lambda function, the derivative of the Pauli Z component of the random matrix w.r.t. beta1.
+    
+    d2_xf : lambda function, the derivative of the Pauli X component of the random matrix w.r.t. beta2.
+    
+    d2_zf : lambda function, the derivative of the Pauli Z component of the random matrix w.r.t. beta2.
+    
+    beta0 : numpy array, the (beta1,beta2) point from which the random search starts
+    
+    max_it : integer, the maximal number of iterations in the search. The default is 30.
+    
+    prec_it : float, characterises the termination condition of the search. The default is 1e-12.
+
+    Returns
+    -------
+    list : list of floats, contains the approximate location of the Weyl-point that was obtained with the search.
+    
+    itnum : integer, the number iterations done in the search.
+
+    """
+    
+    #set the iteration number to zero
     itnum = 0
     
     #expand the the initial beta parameters
@@ -126,7 +254,7 @@ def weyl_search(xf, zf, d1_xf, d1_zf, d2_xf, d2_zf, beta0, max_it = 30, prec_it 
     delta_betas = itfunc(xf = xf, zf = zf, d1_xf = d1_xf, d1_zf = d1_zf, d2_xf = d2_xf,
                          d2_zf = d2_zf, b1_val = b1_val, b2_val = b2_val)
     
-    #repeat this procedure if the norm of deltamass is larger than prec_it
+    #repeat this procedure if the norm of deltamass is larger than prec_it and if the number of iterations is not larger than the maximal allowed value
     while np.linalg.norm(delta_betas) > prec_it and itnum < max_it : 
         
         #update the approximate location of the degeneracy
@@ -144,9 +272,25 @@ def weyl_search(xf, zf, d1_xf, d1_zf, d2_xf, d2_zf, beta0, max_it = 30, prec_it 
     return [b1_val, b2_val], itnum
 
 def isin(bvals, locs, loc_threshhold = 1e-10):
-    #check if the new weyl point is already among the others
+    """
+    Function that checks whether a Weyl-point location is already present among the ones the search already found.
+
+    Parameters
+    ----------
+    bvals : list of floats, contains the approximate location of the Weyl-point that was obtained with the search.
+    
+    locs :  list of list of floats, each element is a list that contains the location of a Weyl-point. 
+    
+    loc_threshhold : float, characterises the minimal distance between two Weyl-points. The default is 1e-10.
+
+    Returns
+    -------
+    locs : list of list of floats, the updated Weyl-point locations.
+
+    """
     
     #define a grid so that the periodicity can be get rid of
+    #this part is kind of hard to describe, I think np.arange(3)-1 would be equally good
     n = (np.arange(5) - 2) * 2 * np.pi
     N1, N2 = np.meshgrid(n,n)
     Ns = np.zeros(5 * 5 * 2).reshape( (5, 5, 2) )
@@ -197,15 +341,48 @@ def isin(bvals, locs, loc_threshhold = 1e-10):
 
 def all_point_finder(xf, zf, d1_xf, d1_zf, d2_xf, d2_zf, max_it = 30, prec_it = 1e-12, loc_threshhold = 1e-10,
                      point_itnum = 500, deg_treshhold = 1e-10):
+    """
+    Function that finds all the Weyl-points in the configuration space for a given random matrix.
+
+    Parameters
+    ----------
+    xf : lambda function, if evaluated at a certain (beta1, beta2) point, gives the Pauli X component of the random matrix.
+    
+    zf : lambda function, if evaluated at a certain (beta1, beta2) point, gives the Pauli Z component of the random matrix.
+    
+    d1_xf : lambda function, the derivative of the Pauli X component of the random matrix w.r.t. beta1.
+    
+    d1_zf : lambda function, the derivative of the Pauli Z component of the random matrix w.r.t. beta1.
+    
+    d2_xf : lambda function, the derivative of the Pauli X component of the random matrix w.r.t. beta2.
+    
+    d2_zf : lambda function, the derivative of the Pauli Z component of the random matrix w.r.t. beta2.
+    
+    max_it : integer, the maximal number of iterations in the search. The default is 30.
+    
+    prec_it : float, characterises the termination condition of the search. The default is 1e-12.
+    
+    loc_threshhold : float, characterises the minimal distance between two Weyl-points. The default is 1e-10.
+    
+    point_itnum : integer, the number of random locations from which the Weyl-point search is started. The default is 500.
+    
+    deg_treshhold : float, specifies the maximal splitting accepted for a Weyl-point. The default is 1e-10.
+
+    Returns
+    -------
+    locs : list of list of floats, the updated Weyl-point locations.
+
+    """
     
     #create container for the weyl points
     locs = []
     
     #print("initially locs is: ", locs)
     
-    #try to find a weyl point for each point_itnum 
-    #for each itnum
+
+    #start to generate random starting points for the Weyl-point search
     for i in range(point_itnum):
+        
         #generate a random point in the configuration space in the [-pi, pi] interval
         b1_val, b2_val = np.random.rand(2) * 2 * np.pi - np.pi 
         
@@ -215,6 +392,7 @@ def all_point_finder(xf, zf, d1_xf, d1_zf, d2_xf, d2_zf, max_it = 30, prec_it = 
         #find the local minimum closest to this initial point
         bvals, itnum = weyl_search(xf = xf, zf = zf, d1_xf = d1_xf, d1_zf = d1_zf, d2_xf = d2_xf, d2_zf = d2_zf,
                                    beta0 = beta0, max_it = max_it, prec_it = prec_it)
+        
         #print("iteration index:", i)
         #print("bvals:", bvals)
         
@@ -236,30 +414,28 @@ def all_point_finder(xf, zf, d1_xf, d1_zf, d2_xf, d2_zf, max_it = 30, prec_it = 
         
     #return the location of the weyl points
     return locs
-
-def weyl_point_num_counter(number_of_random_systems = 100, n = 2):
-    
-    weylnum = np.zeros(100)
-    
-    for i in range(number_of_random_systems):
-        start = timeit.timeit()
-
-        #generate a new system
-        xf, zf, d1_xf, d1_zf, d2_xf, d2_zf = symbolic_matrices(n = n)
-        
-        #get the location of the weyl points
-        locs = all_point_finder(xf = xf, zf = zf, d1_xf = d1_xf, d1_zf = d1_zf, d2_xf = d2_xf, 
-                                d2_zf = d2_zf)
-        
-        #increase the corresponding entry in the array
-        weylnum[len(locs)] += 1
-        
-        end = timeit.timeit()
-        print(end - start)
-    
-    return weylnum
     
 def weyl_charge_calculator(d1_xf, d1_zf, d2_xf, d2_zf, locs):
+    """
+    Function that calculates the charge of the Weyl-points found during the search.
+
+    Parameters
+    ----------
+    d1_xf : lambda function, the derivative of the Pauli X component of the random matrix w.r.t. beta1.
+    
+    d1_zf : lambda function, the derivative of the Pauli Z component of the random matrix w.r.t. beta1.
+    
+    d2_xf : lambda function, the derivative of the Pauli X component of the random matrix w.r.t. beta2.
+    
+    d2_zf : lambda function, the derivative of the Pauli Z component of the random matrix w.r.t. beta2.
+    
+    locs : list of list of floats, the updated Weyl-point locations.
+    
+    Returns
+    -------
+    charge_list : list of integers, the charges corresponding to the Weyl-points.
+
+    """
     #calculate the charges corresponding to the weyl points we have found using our usual search
     charge_list = np.zeros(len(locs))
     
@@ -279,6 +455,22 @@ def weyl_charge_calculator(d1_xf, d1_zf, d2_xf, d2_zf, locs):
     return charge_list
 
 def obtain_42_wp_configs(number_of_random_systems = 500, n = 2, filename = "test"):
+    """
+    Function that finds random systems with 4 and 2 Weyl-points in the configuration space.
+
+    Parameters
+    ----------
+    number_of_random_systems : integer, the number of random systems to generate. The default is 500.
+    
+    n : integer, the number of higher harmonics included in the random matrix. The default is 2.
+    
+    filename : string, the name of the file into which the data should be saved. The default is "test".
+
+    Returns
+    -------
+    numstat : dictionary, contains statistics about the number of occurences of a given Weyl-point number.
+
+    """
 
     #define containers for the 4 and 2 weyl point configuration scenarios
     wps4 = []

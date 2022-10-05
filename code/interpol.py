@@ -3,6 +3,40 @@ import sympy as sp
 import wpp2
 
 def interpolator(x1, z1, x2, z2, beta1, beta2):
+    """
+    Function that creates symbolic expressions with which the interpolation can be done
+
+    Parameters
+    ----------
+    x1 : sympy expression, if evaluated at a certain (beta1, beta2) point, gives the Pauli X component of the first random matrix.
+    
+    z1 : sympy expression, if evaluated at a certain (beta1, beta2) point, gives the Pauli Z component of the first random matrix.
+    
+    x2 : sympy expression, if evaluated at a certain (beta1, beta2) point, gives the Pauli X component of the second random matrix.
+    
+    z2 : sympy expression, if evaluated at a certain (beta1, beta2) point, gives the Pauli Z component of the second random matrix.
+    
+    beta1 : sympy symbol, the beta1 angle variable which is used in the expressions.
+    
+    beta2 : sympy symbol, the beta2 angle variable which is used in the expressions.
+
+    Returns
+    -------
+    xt : sympy expression, if evaluated at a certain (t, beta1, beta2) point, gives the Pauli X component of the interpolating matrix at t.
+    
+    zt : sympy expression, if evaluated at a certain (t, beta1, beta2) point, gives the Pauli Z component of the interpolating matrix at t.
+    
+    d1_xt : sympy expression, derivative of the Pauli X component w.r.t beta1 at t.
+    
+    d1_zt : sympy expression, derivative of the Pauli Z component w.r.t beta1 at t.
+    
+    d2_xt : sympy expression, derivative of the Pauli X component w.r.t beta2 at t.
+    
+    d2_zt : sympy expression, derivative of the Pauli Z component w.r.t beta2 at t.
+    
+    t : sympy expression, the interpolating variable.
+
+    """
     
     #defien a new symbol,t, which characterises the interpolation between the two systems
     t = sp.Symbol('t')
@@ -11,7 +45,6 @@ def interpolator(x1, z1, x2, z2, beta1, beta2):
     xt = (1 - t) * x1 + t * x2  
     zt = (1 - t) * z1 + t * z2
     
-    #find the derivatives for these symbolic functions
     #find the symbolic derivatives of the components
     d1_xt = sp.diff(xt, beta1)
     d1_zt = sp.diff(zt, beta1)
@@ -23,6 +56,42 @@ def interpolator(x1, z1, x2, z2, beta1, beta2):
 
 def three_point_process(x1, z1, x2, z2, beta1, beta2, ts, max_it = 30, prec_it = 1e-12, loc_threshhold = 1e-10,
                      point_itnum = 500, deg_treshhold = 1e-10):
+    """
+    Function that interpolates between two systems specified by x1, z1 and x2, z2. 
+
+    Parameters
+    ----------
+    x1 : sympy expression, the Pauli X component of the first system.
+    
+    z1 : sympy expression, the Pauli Z component of the first system.
+    
+    x2 : sympy expression, the Pauli X component of the second system.
+    
+    z2 : sympy expression, the Pauli Z component of the second system.
+    
+    beta1 : sympy symbol, the beta1 angle variable which is used in the expressions.
+    
+    beta2 : sympy symbol, the beta2 angle variable which is used in the expressions.
+    
+    ts : list of floats, the possible values of the interpolating variable.
+    
+    max_it : integer, the maximal number of iterations in the search. The default is 30.
+    
+    prec_it : float, characterises the termination condition of the search. The default is 1e-12.
+    
+    loc_threshhold : float, characterises the minimal distance between two Weyl-points. The default is 1e-10.
+    
+    point_itnum : integer, the number of random locations from which the Weyl-point search is started. The default is 500.
+    
+    deg_treshhold : float, specifies the maximal splitting accepted for a Weyl-point. The default is 1e-10.
+
+    Returns
+    -------
+    locs_t : list of locs, each entry is a list of Weyl-point locations. 
+    
+    charges_t : list of charges, each entry is a list of Weyl-point charges.
+
+    """
     
     #define the interpolating system
     xt, zt, d1_xt, d1_zt, d2_xt, d2_zt, t = interpolator(x1 = x1, z1 = z1, x2 = x2, z2 = z2, beta1 = beta1, beta2 = beta2)
